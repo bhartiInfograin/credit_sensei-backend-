@@ -57,20 +57,24 @@ exports.login = async (req, res) => {
             var trackingToken = cookiedata_trackingToken.split(";")[0].split("=")[1]
             var awsId = cookiedata_awsId.split(";")[0].split("=")[1]
             const hashedPassword = await hashPassword(j_password)
+            var email = j_username;
+            const customer = await stripe.customers.create({ email }, { apiKey: 'sk_test_51LXIJxSDBnxxqBlsyGziT2MT5YDPdvocpomzlbfN6Svzpsp95VguIcDp1fkMbVHynxz8dTMAPWrzarxTCJvadh5600uPmvpTwz' })
             const user = await userModel.findOne({ email: j_username });
 
             if (!user) {
                 let response = new userModel({
                     email: j_username,
                     password: hashedPassword,
-                    trackingToken: trackingToken
+                    trackingToken: trackingToken,
+                    stripCustomerId: customer.id
 
                 })
                 response.save()
+
             } else {
+
                 await userModel.findByIdAndUpdate(user._id, { trackingToken: trackingToken })
             }
-
             try {
                 const report = await axios({
                     method: 'GET',
@@ -709,11 +713,11 @@ exports.transunion_sent_letter = async (req, res) => {
         //     return res.json({ statusCode: 400, statusMsg: "Create dispute letter" })
         // }
 
-        if(account_pdf){
+        if (account_pdf) {
             var _account_pdf = account_pdf.split(',')[1];
         }
-    
-        if(inquiry_pdf){
+
+        if (inquiry_pdf) {
             var _inquiry_pdf = inquiry_pdf.split(',')[1];
         }
 
@@ -771,7 +775,7 @@ exports.transunion_sent_letter = async (req, res) => {
             from: 'nadeem.infograins@gmail.com',
             subject: 'dispute letter',
             text: 'and easy to do anywhere, even with Node.js',
-            attachments:attachment
+            attachments: attachment
             // attachments: [
             //     {
             //         content: _account_pdf,
@@ -832,11 +836,11 @@ exports.experian_sent_letter = async (req, res) => {
         //     return res.json({ statusCode: 400, statusMsg: "Create dispute letter" })
         // }
 
-        if(account_pdf){
+        if (account_pdf) {
             var _account_pdf = account_pdf.split(',')[1];
         }
-    
-        if(inquiry_pdf){
+
+        if (inquiry_pdf) {
             var _inquiry_pdf = inquiry_pdf.split(',')[1];
         }
 
@@ -892,7 +896,7 @@ exports.experian_sent_letter = async (req, res) => {
             from: 'nadeem.infograins@gmail.com',
             subject: 'dispute letter',
             text: 'and easy to do anywhere, even with Node.js',
-            attachments:attachment
+            attachments: attachment
             // attachments: [
             //     {
             //         content: _account_pdf,
@@ -955,11 +959,11 @@ exports.equifax_sent_letter = async (req, res) => {
         //     return res.json({ statusCode: 400, statusMsg: "Create dispute letter" })
         // }
 
-        if(account_pdf){
+        if (account_pdf) {
             var _account_pdf = account_pdf.split(',')[1];
         }
-    
-        if(inquiry_pdf){
+
+        if (inquiry_pdf) {
             var _inquiry_pdf = inquiry_pdf.split(',')[1];
         }
 
@@ -1509,6 +1513,82 @@ exports.getCreditScore = async (req, res) => {
 }
 
 
+exports.getDueDate = async (req, res) => {
+
+    const trackingToken = req.query.trackingToken
+
+    if (trackingToken == undefined || trackingToken == "" || trackingToken == null) {
+        return res.json({ statusCode: 403, statusMsg: "Enter valid tracking Token" })
+    }
+
+    const user = await userModel.findOne({ trackingToken: trackingToken })
+
+    if (user) {
+
+        const _Date = user.payment
+        if (_Date.length != 0) {
+            const all_dates = _Date[_Date.length - 1]
+            const _allDates = {
+                "endDate": all_dates.endDate,
+                "startDate": all_dates.startDate,
+            }
+
+            return res.json({ statusCode: 200, statusMsg: _allDates })
+        } else {
+            return res.json({ statusCode: 400, statusMsg: "Invalid subcription" })
+        }
+
+    } else {
+        return res.json({ statusCode: 400, statusMsg: "Invalid tracking token" })
+    }
+}
+
+exports.contactus = async (req, res) => {
+    const {
+        name,
+        email,
+        number,
+        message
+    } = req.body
+
+    if (name == "" || name == undefined || name == null) {
+        return res.json({ statusCode: 400, statusMsg: "name required" })
+    }
+    if (email == "" || email == undefined || email == null) {
+        return res.json({ statusCode: 400, statusMsg: "email required" })
+    }
+    if (number == "" || number == undefined || number == null) {
+        return res.json({ statusCode: 400, statusMsg: "number required" })
+    }
+    if (message == "" || message == undefined || message == null) {
+        return res.json({ statusCode: 400, statusMsg: "message required" })
+    }
+
+    const msg = {
+        to: 'bharti.infograins@gmail.com',
+        from: 'nadeem.infograins@gmail.com',
+        subject: 'Inquiry',
+        text: `
+              Name:${name}
+              Email:${email}
+              Phone Number : ${number}
+              Message:${message} `
+    }
+    sgMail.send(msg, async function (err, data) {
+        if (err) {
+            return res.json({ statusCode: 400, statusMsg: err })
+        }
+        if (data) {
+            return res.json({ statusCode: 200, statusMsg: "Email sent successfully" })
+        }
+    })
+
+
+
+
+}
+
+
 exports.plan = async (req, res) => {
     try {
 
@@ -1541,9 +1621,6 @@ exports.plan = async (req, res) => {
         res.status(500).json({ msg: "Internal server error" })
     }
 }
-
-
-
 
 
 exports.subcription = async (req, res) => {
@@ -1637,6 +1714,13 @@ exports.verify = async (req, res) => {
 }
 
 
+
+
+
+const stripe = require('stripe')('sk_test_51LXIJxSDBnxxqBlsyGziT2MT5YDPdvocpomzlbfN6Svzpsp95VguIcDp1fkMbVHynxz8dTMAPWrzarxTCJvadh5600uPmvpTwz');
+const YOUR_DOMAIN = 'http://localhost:3000';
+
+
 exports.getDueDate = async (req, res) => {
 
     const trackingToken = req.query.trackingToken
@@ -1667,51 +1751,79 @@ exports.getDueDate = async (req, res) => {
     }
 }
 
-exports.contactus = async (req, res) => {
-    const {
-        name,
-        email,
-        number,
-        message
-    } = req.body
+exports.checkout = async (req, res) => {
+    const username = req.body.username;
+    const user = await userModel.findOne({ email: username });
+    const session = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        line_items: [
+            {
+                price: 'price_1LXKTiSDBnxxqBlsQz6tSW6v',
+                quantity: 1,
 
-    if (name == "" || name == undefined || name == null) {
-        return res.json({ statusCode: 400, statusMsg: "name required" })
-    }
-    if (email == "" || email == undefined || email == null) {
-        return res.json({ statusCode: 400, statusMsg: "email required" })
-    }
-    if (number == "" || number == undefined || number == null) {
-        return res.json({ statusCode: 400, statusMsg: "number required" })
-    }
-    if (message == "" || message == undefined || message == null) {
-        return res.json({ statusCode: 400, statusMsg: "message required" })
-    }
+            },
+        ],
 
-    const msg = {
-        to: 'bharti.infograins@gmail.com',
-        from: 'nadeem.infograins@gmail.com',
-        subject: 'Inquiry',
-        text: `
-              Name:${name}
-              Email:${email}
-              Phone Number : ${number}
-              Message:${message} `
-    }
-    sgMail.send(msg, async function (err, data) {
-        if (err) {
-            return res.json({ statusCode: 400, statusMsg: err })
+        success_url: `${YOUR_DOMAIN}/userHome`,
+        cancel_url:`${YOUR_DOMAIN}/login`,
+        customer: user.stripCustomerId
+    },
+        {
+            apiKey: 'sk_test_51LXIJxSDBnxxqBlsyGziT2MT5YDPdvocpomzlbfN6Svzpsp95VguIcDp1fkMbVHynxz8dTMAPWrzarxTCJvadh5600uPmvpTwz'
         }
-        if (data) {
-            return res.json({ statusCode: 200, statusMsg: "Email sent successfully" })
-        }
-    })
 
+    );
 
+    res.json(session)
 
+}
+     
+
+exports.subscriptions_list = async (req, res) => {
+
+    const trackingToken = req.body.trackingToken
+
+    if (trackingToken == undefined || trackingToken == "" || trackingToken == null) {
+        return res.json({ statusCode: 403, statusMsg: "Enter valid tracking Token" })
+    }
+
+    const user = await userModel.findOne({ trackingToken: trackingToken })
+    if (user) {
+        
+        const subcription = await stripe.subscriptions.list({
+            customer: user.stripCustomerId,
+        },
+            {
+                apiKey: 'sk_test_51LXIJxSDBnxxqBlsyGziT2MT5YDPdvocpomzlbfN6Svzpsp95VguIcDp1fkMbVHynxz8dTMAPWrzarxTCJvadh5600uPmvpTwz'
+            }
+        )
+        return res.json({ statusCode: 400, statusMsg: subcription })
+
+    } else {
+        return res.json({ statusCode: 400, statusMsg: "Invalid tracking token" })
+    }
 
 }
 
+exports.del_subscriptions = async (req,res) => {
+
+     const subscriptionId = req.body.subscriptionId;
+
+     if (subscriptionId == undefined || subscriptionId == "" || subscriptionId == null) {
+        return res.json({ statusCode: 403, statusMsg: "Enter valid subscriptionId" })
+    }
+
+    if(subscriptionId){
+
+        const deleted = await stripe.subscriptions.del(
+            subscriptionId
+          );
+    
+          return res.json({ statusCode: 200, statusMsg:deleted })
+    
+    }
+ 
+}
 
 
 

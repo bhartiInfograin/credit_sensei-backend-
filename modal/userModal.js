@@ -14,6 +14,11 @@ const userSchema = new Schema({
         type: String,
         required: true
     },
+
+    stripCustomerId:{
+        type: String,
+        required: true 
+    },
     
     trackingToken: {
         type: String

@@ -32,7 +32,11 @@ const {
      subcription,
      verify,
      getDueDate,
-     contactus
+     contactus,
+   
+     checkout,
+     subscriptions_list,
+     del_subscriptions
      
 }= require("../controller/apiController")
 
@@ -66,6 +70,11 @@ router.post("/subcription",subcription);
 router.post("/verify",verify);
 router.get("/getDueDate",getDueDate);
 router.post("/contactus",contactus);
+
+router.post("/checkout",checkout);
+router.post("/subscriptions_list",subscriptions_list);
+router.post("/del_subscriptions",del_subscriptions);
+
 
 
 module.exports = router;
